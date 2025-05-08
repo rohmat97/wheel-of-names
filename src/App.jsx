@@ -74,28 +74,38 @@ function App() {
     setIsSpinning(true);
     setShowModal(false);
 
-    const newRotation = rotation + 2000 + Math.random() * 3000;
+    // First, calculate the winning index based on probabilities
+    const randomValue = Math.random() * totalSegments;
+    let currentSegment = 0;
+    let winningIndex = 0;
+
+    for (let i = 0; i < names.length; i++) {
+      currentSegment += names[i].probability;
+      if (currentSegment > randomValue) {
+        winningIndex = i;
+        break;
+      }
+    }
+
+    // Calculate the rotation needed to land on the winning segment
+    const previousSegments = names
+      .slice(0, winningIndex)
+      .reduce((sum, n) => sum + n.probability, 0);
+    const segmentDegrees =
+      (names[winningIndex].probability / totalSegments) * 360;
+    const targetRotation = -(
+      (previousSegments / totalSegments) * 360 +
+      segmentDegrees / 2
+    );
+
+    // Add extra rotations and adjust to ensure it spins multiple times
+    const extraSpins = 5; // Number of complete rotations
+    const newRotation = targetRotation - 360 * extraSpins;
+
     setRotation(newRotation);
+    setWinner(names[winningIndex].name);
 
     setTimeout(() => {
-      const normalizedRotation = newRotation % 360;
-      const rotationPercentage = normalizedRotation / 360;
-      let currentSegment = 0;
-
-      // Find the winning segment based on probabilities
-      const targetValue = rotationPercentage * totalSegments;
-      let winningIndex = 0;
-
-      for (let i = 0; i < names.length; i++) {
-        currentSegment += names[i].probability;
-        if (currentSegment > targetValue) {
-          winningIndex = i;
-          break;
-        }
-      }
-
-      setWinner(names[winningIndex].name);
-      setIsSpinning(false);
       setShowModal(true);
     }, 3000);
   };
@@ -129,6 +139,7 @@ function App() {
         alignItems: "center",
         justifyContent: "center",
         py: 4,
+        px: { xs: 2, sm: 4 },
       }}
     >
       <Typography
@@ -136,7 +147,8 @@ function App() {
         gutterBottom
         align="center"
         sx={{
-          mb: 6,
+          mb: { xs: 3, sm: 6 },
+          fontSize: { xs: "2rem", sm: "3rem" },
           fontWeight: "bold",
           background: "linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%)",
           backgroundClip: "text",
@@ -151,14 +163,20 @@ function App() {
       <Box
         sx={{
           display: "flex",
-          gap: 4,
+          flexDirection: { xs: "column", md: "row" },
+          gap: { xs: 2, md: 4 },
           alignItems: "center",
           width: "100%",
           mx: "auto",
         }}
       >
         {/* Left Side: Names List and Input */}
-        <Box sx={{ width: "auto" }}>
+        <Box
+          sx={{
+            width: { xs: "100%", md: "auto" },
+            order: { xs: 2, md: 1 },
+          }}
+        >
           {/* Names List */}
           <Box
             sx={{
@@ -169,6 +187,8 @@ function App() {
               display: "flex",
               flexWrap: "wrap",
               gap: 2,
+              maxHeight: { xs: "200px", md: "none" },
+              overflowY: { xs: "auto", md: "visible" },
             }}
           >
             <Typography
@@ -270,7 +290,9 @@ function App() {
         {/* Center: Wheel and Spin Button */}
         <Box
           sx={{
-            flex: 1,
+            flex: { xs: "none", md: 1 },
+            order: { xs: 1, md: 2 },
+            width: "100%",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -282,17 +304,19 @@ function App() {
             sx={{
               display: "flex",
               justifyContent: "center",
-              mb: 6,
+              mb: { xs: 3, md: 6 },
               position: "relative",
               cursor: "pointer",
+              width: "100%",
             }}
-            onClick={spinWheel}
           >
             <Box
               sx={{
-                width: "600px",
-                height: "600px",
+                width: { xs: "300px", sm: "400px", md: "600px" },
+                height: { xs: "300px", sm: "400px", md: "600px" },
                 position: "relative",
+                maxWidth: "100%",
+                aspectRatio: "1/1",
               }}
             >
               <Box
@@ -303,7 +327,7 @@ function App() {
                   position: "relative",
                   overflow: "hidden",
                   transition: "transform 3s cubic-bezier(0.2, 0.8, 0.2, 1)",
-                  transform: `rotate(${rotation}deg)`,
+                  transform: `rotate(${rotation + 90}deg)`,
                   border: "2px solid #000",
                   boxShadow: "0 0 15px rgba(0,0,0,0.2)",
                 }}
@@ -354,18 +378,24 @@ function App() {
                           top: "48.5%",
                           transform: `
                             rotate(${startAngle + segmentDegrees / 2}deg)
-                            translateY(-240px)
+                            translateY(${
+                              window.innerWidth < 600 ? "-120px" : "-240px"
+                            })
                             rotate(-${startAngle + segmentDegrees / 2}deg)
                           `,
                           transformOrigin: "center bottom",
                           fontWeight: "bold",
-                          fontSize: names.length > 12 ? "0.8rem" : "1rem",
+                          fontSize: {
+                            xs: names.length > 12 ? "0.6rem" : "0.8rem",
+                            sm: names.length > 12 ? "0.7rem" : "0.9rem",
+                            md: names.length > 12 ? "0.8rem" : "1rem",
+                          },
                           textAlign: "center",
                           userSelect: "none",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
-                          maxWidth: "180px",
+                          maxWidth: { xs: "120px", sm: "150px", md: "180px" },
                           color: "#000",
                           padding: "4px 12px",
                           borderRadius: "4px",
@@ -429,19 +459,44 @@ function App() {
           </Button>
         </Box>
 
-        {/* Right Side: Empty space to balance layout */}
-        <Box sx={{ width: "250px" }} />
+        {/* Right Side: Remove on mobile */}
+        <Box
+          sx={{
+            width: { xs: 0, md: "250px" },
+            display: { xs: "none", md: "block" },
+            order: { xs: 3, md: 3 },
+          }}
+        />
       </Box>
+
+      {showModal && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={true}
+          numberOfPieces={2000}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            zIndex: 9999,
+          }}
+        />
+      )}
 
       {/* Winner Modal */}
       <Modal
         open={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => {
+          setIsSpinning(false);
+          setShowModal(false);
+        }}
         closeAfterTransition
         sx={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          p: { xs: 2, sm: 0 },
         }}
       >
         <Fade in={showModal}>
@@ -471,14 +526,14 @@ function App() {
               },
               background: "linear-gradient(135deg, #fff 0%, #f5f5f5 100%)",
               border: "3px solid #gold",
+              width: { xs: "90%", sm: "auto" },
+              maxWidth: "500px",
+              "& h3": {
+                fontSize: { xs: "1.8rem", sm: "2.5rem" },
+              },
+              overflow: "hidden",
             }}
           >
-            <Confetti
-              width={window.innerWidth}
-              height={window.innerHeight}
-              recycle={false}
-              numberOfPieces={200}
-            />
             <Typography
               variant="h6"
               sx={{
@@ -516,7 +571,10 @@ function App() {
             </Typography>
             <Button
               variant="contained"
-              onClick={() => setShowModal(false)}
+              onClick={() => {
+                setIsSpinning(false);
+                setShowModal(false);
+              }}
               sx={{
                 mt: 2,
                 background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
